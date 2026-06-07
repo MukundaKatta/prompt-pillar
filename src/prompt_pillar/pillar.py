@@ -89,12 +89,26 @@ class Pillar:
         diverge_idx = pr.first_divergence_index
         meets = pr.estimated_cacheable_tokens >= self.threshold_tokens
 
-        if meets and "all runs identical" in pr.divergence_summary:
+        if "all runs identical" in pr.divergence_summary:
+            # No divergence at all: the runs share their full common prefix.
+            # Whether or not we clear the threshold, there is no cache-buster to
+            # hoist out, so do not fall through to the divergence advice below.
+            if meets:
+                recommendation = (
+                    "this prompt is already cache-friendly; verify with cachebench"
+                )
+            else:
+                recommendation = (
+                    "runs are identical and already maximally cacheable, but the "
+                    f"shared prefix is only {pr.estimated_cacheable_tokens} tokens, "
+                    f"below the {self.threshold_tokens}-token threshold; grow the "
+                    f"shared prefix or lower the threshold"
+                )
             return PillarReport(
                 prefix_result=pr,
                 reason="all runs share the full common prefix",
-                recommendation="this prompt is already cache-friendly; verify with cachebench",
-                meets_threshold=True,
+                recommendation=recommendation,
+                meets_threshold=meets,
                 threshold_tokens=self.threshold_tokens,
             )
 
@@ -109,8 +123,7 @@ class Pillar:
             d = diff_messages(runs[0][diverge_idx], runs[1][diverge_idx])
             if d.role_changed:
                 reason = (
-                    f"role changed at index {diverge_idx}: "
-                    f"{d.role_a!r} vs {d.role_b!r}"
+                    f"role changed at index {diverge_idx}: {d.role_a!r} vs {d.role_b!r}"
                 )
                 recommendation = (
                     "align role ordering across runs; the role sequence itself "

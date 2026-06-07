@@ -51,6 +51,19 @@ def test_pillar_below_threshold_flagged():
     assert "BELOW" in str(rep)
 
 
+def test_pillar_identical_runs_below_threshold_not_misdiagnosed():
+    # Runs are byte-identical but the shared prefix is smaller than the
+    # threshold. There is no diverging message, so the report must not tell the
+    # user to hoist content out of a non-existent divergence.
+    a = [_sys("x")]
+    b = [_sys("x")]
+    rep = Pillar(threshold_tokens=10000).analyze([a, b])
+    assert rep.meets_threshold is False
+    assert rep.reason == "all runs share the full common prefix"
+    assert "diverging message" not in rep.recommendation
+    assert "threshold" in rep.recommendation.lower()
+
+
 def test_pillar_single_run_recommendation():
     a = [_sys("only one run here")]
     rep = Pillar(threshold_tokens=10).analyze([a])
